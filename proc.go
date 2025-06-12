@@ -24,6 +24,7 @@ func init() {
 	name = filepath.Base(os.Args[0])
 	pid = os.Getpid()
 	Logger = os.Stdout
+	ctx = context.Background()
 
 	registerSignalListener()
 }
