@@ -9,6 +9,9 @@ import (
 // our queue are blocking mode with 5 seconds
 var delayTimeBeforeForceQuit time.Duration
 
+// killFn allows tests to stub the real kill implementation.
+var killFn = kill
+
 // SetTimeToForceQuit sets the waiting time before force quitting.
 func SetTimeToForceQuit(duration time.Duration) {
 	delayTimeBeforeForceQuit = duration
@@ -26,5 +29,5 @@ func Shutdown(sig syscall.Signal) error {
 		Notify(syscall.SIGTERM)
 	}
 
-	return kill(sig)
+	return killFn(sig)
 }
