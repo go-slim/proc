@@ -41,7 +41,9 @@ func TestExec_OnStart_WorkDir_Env(t *testing.T) {
 }
 
 func echoCmdArgs() (string, []string) {
-	if isWindows() { return "cmd", []string{"/C", "echo", "ok"} }
+	if isWindows() {
+		return "cmd", []string{"/C", "echo", "ok"}
+	}
 	return "sh", []string{"-c", "echo ok"}
 }
 

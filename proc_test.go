@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
-	"syscall"
 )
 
 func TestProcBasics(t *testing.T) {
@@ -85,37 +85,39 @@ func TestSignal_On_Once_Cancel_Notify(t *testing.T) {
 }
 
 func TestExec_Success(t *testing.T) {
-    // Use a trivial command that exits 0 on each platform
-    cmd, args := trivialEcho()
-    err := Exec(context.Background(), ExecOptions{Command: cmd, Args: args, Timeout: 2 * time.Second})
-    if err != nil {
-        t.Fatalf("Exec success expected, got error: %v", err)
-    }
+	// Use a trivial command that exits 0 on each platform
+	cmd, args := trivialEcho()
+	err := Exec(context.Background(), ExecOptions{Command: cmd, Args: args, Timeout: 2 * time.Second})
+	if err != nil {
+		t.Fatalf("Exec success expected, got error: %v", err)
+	}
 }
 
 func TestExec_Timeout(t *testing.T) {
-    // Use a short sleep with a shorter timeout
-    cmd, args := trivialSleep(2 * time.Second)
-    err := Exec(context.Background(), ExecOptions{Command: cmd, Args: args, Timeout: 50 * time.Millisecond, TTK: 50 * time.Millisecond})
-    if err == nil {
-        t.Fatalf("Exec should timeout, got nil error")
-    }
+	// Use a short sleep with a shorter timeout
+	cmd, args := trivialSleep(2 * time.Second)
+	err := Exec(context.Background(), ExecOptions{Command: cmd, Args: args, Timeout: 50 * time.Millisecond, TTK: 50 * time.Millisecond})
+	if err == nil {
+		t.Fatalf("Exec should timeout, got nil error")
+	}
 }
 
 // Helpers to select commands cross-platform
 func trivialEcho() (string, []string) {
-    if runtime.GOOS == "windows" {
-        return "cmd", []string{"/C", "echo", "ok"}
-    }
-    return "sh", []string{"-c", "echo ok"}
+	if runtime.GOOS == "windows" {
+		return "cmd", []string{"/C", "echo", "ok"}
+	}
+	return "sh", []string{"-c", "echo ok"}
 }
 
 func trivialSleep(d time.Duration) (string, []string) {
-    sec := int(d / time.Second)
-    if sec <= 0 { sec = 1 }
-    if runtime.GOOS == "windows" {
-        // powershell Start-Sleep -Seconds N
-        return "powershell", []string{"-Command", "Start-Sleep", "-Seconds", strconv.Itoa(sec)}
-    }
-    return "sh", []string{"-c", "sleep " + strconv.Itoa(sec)}
+	sec := int(d / time.Second)
+	if sec <= 0 {
+		sec = 1
+	}
+	if runtime.GOOS == "windows" {
+		// powershell Start-Sleep -Seconds N
+		return "powershell", []string{"-Command", "Start-Sleep", "-Seconds", strconv.Itoa(sec)}
+	}
+	return "sh", []string{"-c", "sleep " + strconv.Itoa(sec)}
 }
