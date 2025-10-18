@@ -52,6 +52,49 @@ func TestDebugfWritesToLogger(t *testing.T) {
 	}
 }
 
+func TestPath_EmptyComponents(t *testing.T) {
+	p := Path()
+	if p != workdir {
+		t.Fatalf("Path() with no args should return workdir, got %q", p)
+	}
+}
+
+func TestPath_SingleComponent(t *testing.T) {
+	p := Path("test.txt")
+	expected := filepath.Join(workdir, "test.txt")
+	if p != expected {
+		t.Fatalf("Path(\"test.txt\") = %q, want %q", p, expected)
+	}
+}
+
+func TestPathf_EmptyFormat(t *testing.T) {
+	p := Pathf("")
+	expected := workdir
+	if p != expected {
+		t.Fatalf("Pathf(\"\") = %q, want %q", p, expected)
+	}
+}
+
+func TestPathf_WithArgs(t *testing.T) {
+	p := Pathf("dir/%s/%d.txt", "subdir", 123)
+	if !strings.Contains(p, "dir") || !strings.Contains(p, "subdir") || !strings.Contains(p, "123.txt") {
+		t.Fatalf("Pathf result unexpected: %q", p)
+	}
+}
+
+func TestContext_NotNil(t *testing.T) {
+	ctx := Context()
+	if ctx == nil {
+		t.Fatal("Context() returned nil")
+	}
+	// Verify it's actually context.Background()
+	select {
+	case <-ctx.Done():
+		t.Fatal("Context should not be done")
+	default:
+	}
+}
+
 func TestSignal_On_Once_Cancel_Notify(t *testing.T) {
 	// Use SIGTERM which is registered by default in registerSignalListener.
 	// We call Notify directly (not via OS) so no os.Exit occurs.
@@ -120,4 +163,9 @@ func trivialSleep(d time.Duration) (string, []string) {
 		return "powershell", []string{"-Command", "Start-Sleep", "-Seconds", strconv.Itoa(sec)}
 	}
 	return "sh", []string{"-c", "sleep " + strconv.Itoa(sec)}
+}
+
+// Helper for checking Windows platform
+func isWindowsOS() bool {
+	return runtime.GOOS == "windows"
 }

@@ -86,3 +86,70 @@ func TestShutdown_Delayed_WaitsAndKills(t *testing.T) {
 	// reset delay for other tests
 	SetTimeToForceQuit(0)
 }
+
+func TestShutdown_KillError(t *testing.T) {
+	// Test that Shutdown returns error if kill fails
+	oldKill := killFn
+	defer func() { killFn = oldKill }()
+
+	expectedErr := syscall.EPERM
+	killFn = func(sig syscall.Signal) error {
+		return expectedErr
+	}
+
+	SetTimeToForceQuit(0)
+
+	err := Shutdown(syscall.SIGTERM)
+	if err != expectedErr {
+		t.Fatalf("Expected error %v, got %v", expectedErr, err)
+	}
+}
+
+func TestSetTimeToForceQuit(t *testing.T) {
+	// Test that SetTimeToForceQuit updates the delay
+	oldDelay := delayTimeBeforeForceQuit
+	defer func() { delayTimeBeforeForceQuit = oldDelay }()
+
+	newDelay := 123 * time.Millisecond
+	SetTimeToForceQuit(newDelay)
+
+	if delayTimeBeforeForceQuit != newDelay {
+		t.Fatalf("Expected delay %v, got %v", newDelay, delayTimeBeforeForceQuit)
+	}
+}
+
+func TestShutdown_MultipleListeners(t *testing.T) {
+	// Test that all listeners are notified during shutdown
+	oldKill := killFn
+	defer func() { killFn = oldKill }()
+
+	var killCalled int32
+	killFn = func(sig syscall.Signal) error {
+		atomic.AddInt32(&killCalled, 1)
+		return nil
+	}
+
+	SetTimeToForceQuit(0)
+
+	var count1, count2, count3 int32
+	Once(syscall.SIGTERM, func() { atomic.AddInt32(&count1, 1) })
+	Once(syscall.SIGTERM, func() { atomic.AddInt32(&count2, 1) })
+	Once(syscall.SIGTERM, func() { atomic.AddInt32(&count3, 1) })
+
+	if err := Shutdown(syscall.SIGTERM); err != nil {
+		t.Fatalf("Shutdown failed: %v", err)
+	}
+
+	if atomic.LoadInt32(&killCalled) != 1 {
+		t.Fatalf("kill should be called once, got %d", killCalled)
+	}
+	if atomic.LoadInt32(&count1) != 1 {
+		t.Fatalf("listener 1 should be notified once, got %d", count1)
+	}
+	if atomic.LoadInt32(&count2) != 1 {
+		t.Fatalf("listener 2 should be notified once, got %d", count2)
+	}
+	if atomic.LoadInt32(&count3) != 1 {
+		t.Fatalf("listener 3 should be notified once, got %d", count3)
+	}
+}

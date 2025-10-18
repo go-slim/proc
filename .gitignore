@@ -1,4 +1,7 @@
-.idea
-.vscode
+.idea/
+.zed/
+.vscode/
 *.iml
 .DS_Store
+*.out
+benchmark_results.txt
