@@ -1,3 +1,5 @@
+// Package proc provides process management utilities including process information,
+// signal handling, graceful shutdown, and command execution.
 package proc
 
 import (
@@ -8,12 +10,17 @@ import (
 )
 
 var (
-	pid     int
-	name    string
+	// pid stores the process ID of the current process
+	pid int
+	// name stores the process name (command name)
+	name string
+	// workdir stores the working directory of the current process
 	workdir string
-	ctx     context.Context
+	// ctx is the global context for the process
+	ctx context.Context
 )
 
+// init initializes the process information and registers signal listeners.
 func init() {
 	var err error
 	workdir, err = os.Getwd()

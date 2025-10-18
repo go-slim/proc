@@ -11,22 +11,41 @@ import (
 	"time"
 )
 
+// ExecOptions configures command execution parameters.
 type ExecOptions struct {
+	// WorkDir specifies the working directory for the command.
+	// If empty, defaults to the current process's working directory.
 	WorkDir string
+	// Timeout specifies the maximum duration for command execution.
+	// If > 0, a timeout context will be created.
 	Timeout time.Duration
-	Env     []string
-	Stdin   io.Reader
-	Stdout  io.Writer
-	Stderr  io.Writer
+	// Env specifies additional environment variables to pass to the command.
+	// These are appended to the current process's environment.
+	Env []string
+	// Stdin specifies the standard input for the command.
+	Stdin io.Reader
+	// Stdout specifies the standard output for the command.
+	Stdout io.Writer
+	// Stderr specifies the standard error output for the command.
+	Stderr io.Writer
+	// Command specifies the command to execute.
 	Command string
-	Args    []string
-	TTK     time.Duration // time to kill
+	// Args specifies the command arguments.
+	Args []string
+	// TTK (Time To Kill) specifies the delay between sending interrupt signal
+	// and kill signal during command cancellation.
+	TTK time.Duration
+	// OnStart is a callback function invoked after the command starts.
 	OnStart func(cmd *exec.Cmd)
 }
 
-// Exec
-// https://github.com/gouravkrosx/golang-cmd-exit-demo?ref=hackernoon.com
-// https://keploy.io/blog/technology/managing-go-processes
+// Exec executes a command with the given context and options.
+// It supports timeout, graceful shutdown with configurable kill delay,
+// and proper process group management to prevent zombie processes.
+//
+// References:
+// - https://github.com/gouravkrosx/golang-cmd-exit-demo?ref=hackernoon.com
+// - https://keploy.io/blog/technology/managing-go-processes
 func Exec(ctx context.Context, opts ExecOptions) error {
 	if opts.WorkDir == "" {
 		opts.WorkDir = workdir

@@ -1,7 +1,6 @@
 package proc
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -12,13 +11,27 @@ import (
 )
 
 var (
-	seq   uint32
-	lock  sync.Mutex
-	lns   []*listener
-	mask  uint32
+	// seq is an atomic counter for generating unique listener IDs
+	seq uint32
+	// lock protects the listeners slice during concurrent access
+	lock sync.Mutex
+	// lns stores all registered signal listeners
+	lns []*listener
+	// mask is a bitmask tracking which signals have been registered with the OS
+	mask uint32
+	// sigch is the channel that receives OS signals
 	sigch chan os.Signal
 )
 
+// registerSignalListener initializes the signal handling system.
+// It creates a signal channel and starts a goroutine to handle incoming signals.
+// The following signals are handled:
+// - SIGHUP, SIGINT, SIGQUIT, SIGTERM: Trigger graceful shutdown
+// - Other signals: Dispatched to registered listeners
+//
+// References:
+// - https://golang.org/pkg/os/signal/#Notify
+// - https://colobu.com/2015/10/09/Linux-Signals/
 func registerSignalListener() {
 	// https://golang.org/pkg/os/signal/#Notify
 	sigch = make(chan os.Signal, 1)
@@ -35,7 +48,7 @@ func registerSignalListener() {
 	go func() {
 		for {
 			sig := <-sigch
-			debugf(fmt.Sprintf("PID: %d. Received %v.", pid, sig))
+			debugf("PID: %d. Received %v.", pid, sig)
 			switch sig {
 			case syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM:
 				// gracefully shuts down the process.
@@ -51,10 +64,12 @@ func registerSignalListener() {
 	}()
 }
 
-// the max across all systems
-// see go/src/os/signal/signal.go
+// numSig is the maximum number of signals supported across all systems.
+// This value is defined to match the implementation in go/src/os/signal/signal.go.
 const numSig = 65
 
+// signum converts an os.Signal to its numeric representation.
+// Returns -1 if the signal is not a valid syscall.Signal or is out of range.
 func signum(sig os.Signal) int {
 	switch sig := sig.(type) {
 	case syscall.Signal:
@@ -68,13 +83,22 @@ func signum(sig os.Signal) int {
 	}
 }
 
+// listener represents a registered signal handler.
 type listener struct {
-	id   uint32
-	fn   func()
-	sig  int
+	// id is the unique identifier for this listener
+	id uint32
+	// fn is the callback function to execute when the signal is received
+	fn func()
+	// sig is the numeric representation of the signal to listen for
+	sig int
+	// once indicates whether this listener should execute only once
 	once bool
 }
 
+// add registers a new signal listener with the specified behavior.
+// It handles the signal registration with the OS if needed and returns
+// a unique ID that can be used to cancel the listener later.
+// Returns 0 if the signal is invalid.
 func add(sig os.Signal, fn func(), once bool) uint32 {
 	if n := signum(sig); n > -1 {
 		lock.Lock()
@@ -98,6 +122,9 @@ func add(sig os.Signal, fn func(), once bool) uint32 {
 	return 0
 }
 
+// wrap returns a function that optionally ensures single execution.
+// If once is true, the returned function will execute fn at most once,
+// even if called multiple times. If once is false, returns fn unchanged.
 func wrap(fn func(), once bool) func() {
 	if !once {
 		return fn
@@ -106,14 +133,24 @@ func wrap(fn func(), once bool) func() {
 	return func() { so.Do(fn) }
 }
 
+// On registers a signal handler that will be called every time the specified
+// signal is received. Returns a unique ID that can be used with Cancel to
+// remove the listener.
 func On(sig os.Signal, fn func()) uint32 {
 	return add(sig, fn, false)
 }
 
+// Once registers a signal handler that will be called at most once when the
+// specified signal is received. After execution, the listener is automatically
+// removed. Returns a unique ID that can be used with Cancel to remove the
+// listener before it executes.
 func Once(sig os.Signal, fn func()) uint32 {
 	return add(sig, fn, true)
 }
 
+// Cancel removes the signal listeners with the specified IDs.
+// It's safe to pass IDs that don't exist or have already been removed.
+// Zero IDs are ignored.
 func Cancel(ids ...uint32) {
 	n := len(ids)
 	for _, id := range ids {
@@ -131,6 +168,13 @@ func Cancel(ids ...uint32) {
 	lock.Unlock()
 }
 
+// Notify dispatches a signal to all registered listeners for that signal.
+// It executes all matching listeners concurrently in separate goroutines,
+// with panic recovery. Listeners registered with Once are automatically
+// removed after execution.
+//
+// Returns true if at least one listener was notified, false if no listeners
+// were registered for the signal or if the signal is invalid.
 func Notify(sig os.Signal) bool {
 	n := signum(sig)
 	if n == -1 {
@@ -167,6 +211,9 @@ func Notify(sig os.Signal) bool {
 	return true
 }
 
+// safeRunner creates a function that executes callbacks in separate goroutines
+// with panic recovery. Each callback execution is tracked by the provided
+// WaitGroup.
 func safeRunner(wg *sync.WaitGroup) func(func()) {
 	return func(fn func()) {
 		wg.Add(1)
@@ -178,6 +225,8 @@ func safeRunner(wg *sync.WaitGroup) func(func()) {
 	}
 }
 
+// recovery handles panics that occur during signal listener execution.
+// It logs the panic value and stack trace for debugging purposes.
 func recovery() {
 	if p := recover(); p != nil {
 		debugf("%+v\n%s", p, debug.Stack())
