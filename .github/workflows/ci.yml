@@ -73,6 +73,9 @@ jobs:
           go test -bench . -benchmem -run '^$' ./... | tee artifacts/bench.txt
 
       - name: Upload benchmark results
+        # Skip upload when running locally with 'act'
+        # act sets ACT=true environment variable
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: bench-results-${{ matrix.os }}
