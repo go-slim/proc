@@ -168,9 +168,19 @@ func Cancel(ids ...uint32) {
 	lock.Unlock()
 }
 
+// Wait blocks until the specified signal is received.
+// It registers a one-time signal handler and blocks the current goroutine
+// until the signal arrives. This is useful for waiting for specific signals
+// in a synchronous manner.
+//
+// Example:
+//
+//	// Wait for SIGUSR1 signal
+//	proc.Wait(syscall.SIGUSR1)
+//	fmt.Println("Received SIGUSR1")
 func Wait(sig os.Signal) {
 	wait := make(chan struct{})
-	Once(sig, func() { wait <- struct{}{} })
+	Once(sig, func() { close(wait) })
 	<-wait
 }
 

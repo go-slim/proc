@@ -3,9 +3,11 @@
 package proc
 
 import (
+	"os"
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // On Windows, we use SIGTERM and SIGINT instead of SIGUSR1 and SIGUSR2
@@ -93,4 +95,69 @@ func TestSignal_ConcurrentNotify(t *testing.T) {
 		t.Fatalf("Expected counter=%d, got %d", expected, counter)
 	}
 	mu.Unlock()
+}
+
+func TestWait_BlocksUntilSignal(t *testing.T) {
+	// Test that Wait blocks until the signal is received
+	// On Windows, we use os.Interrupt instead of SIGUSR1
+	done := make(chan struct{})
+	received := false
+
+	go func() {
+		Wait(os.Interrupt)
+		received = true
+		close(done)
+	}()
+
+	// Give Wait time to register the listener
+	time.Sleep(10 * time.Millisecond)
+
+	// Trigger the signal using Notify instead of syscall.Kill
+	// (Windows doesn't support sending signals to self the same way)
+	Notify(os.Interrupt)
+
+	// Wait should unblock
+	select {
+	case <-done:
+		if !received {
+			t.Fatal("Wait should have unblocked after signal")
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("Wait did not unblock within timeout")
+	}
+}
+
+func TestWait_MultipleWaiters(t *testing.T) {
+	// Test that multiple goroutines can Wait for the same signal
+	// On Windows, we use syscall.SIGTERM
+	const numWaiters = 5
+	var wg sync.WaitGroup
+	wg.Add(numWaiters)
+
+	for range numWaiters {
+		go func() {
+			defer wg.Done()
+			Wait(syscall.SIGTERM)
+		}()
+	}
+
+	// Give all Wait calls time to register
+	time.Sleep(10 * time.Millisecond)
+
+	// Trigger the signal using Notify
+	Notify(syscall.SIGTERM)
+
+	// All waiters should be unblocked
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(1 * time.Second):
+		t.Fatal("Not all waiters were unblocked within timeout")
+	}
 }
