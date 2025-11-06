@@ -9,7 +9,7 @@ import (
 // BenchmarkPath measures the performance of Path function
 func BenchmarkPath(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Path("dir1", "dir2", "file.txt")
 	}
 }
@@ -17,7 +17,7 @@ func BenchmarkPath(b *testing.B) {
 // BenchmarkPathf measures the performance of Pathf function
 func BenchmarkPathf(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Pathf("dir/%s/%d.txt", "subdir", 123)
 	}
 }
@@ -29,8 +29,8 @@ func BenchmarkDebugf(b *testing.B) {
 	defer func() { Logger = old }()
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := 0; b.Loop(); i++ {
 		debugf("test message %d", i)
 	}
 }
@@ -43,8 +43,8 @@ func BenchmarkDebugfWithBuffer(b *testing.B) {
 	defer func() { Logger = old }()
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := 0; b.Loop(); i++ {
 		debugf("test message %d", i)
 	}
 }
@@ -52,7 +52,7 @@ func BenchmarkDebugfWithBuffer(b *testing.B) {
 // BenchmarkPid measures process ID retrieval
 func BenchmarkPid(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Pid()
 	}
 }
@@ -60,7 +60,7 @@ func BenchmarkPid(b *testing.B) {
 // BenchmarkName measures process name retrieval
 func BenchmarkName(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Name()
 	}
 }
@@ -68,7 +68,7 @@ func BenchmarkName(b *testing.B) {
 // BenchmarkWorkDir measures working directory retrieval
 func BenchmarkWorkDir(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = WorkDir()
 	}
 }
@@ -76,7 +76,7 @@ func BenchmarkWorkDir(b *testing.B) {
 // BenchmarkContext measures context retrieval
 func BenchmarkContext(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Context()
 	}
 }

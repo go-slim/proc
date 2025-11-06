@@ -64,7 +64,7 @@ func TestSignal_ConcurrentNotify(t *testing.T) {
 	var mu sync.Mutex
 
 	var ids []uint32
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		id := On(syscall.SIGUSR1, func() {
 			mu.Lock()
 			counter++
@@ -78,7 +78,7 @@ func TestSignal_ConcurrentNotify(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			Notify(syscall.SIGUSR1)

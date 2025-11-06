@@ -60,8 +60,8 @@ func BenchmarkNotify(b *testing.B) {
 	defer Cancel(id)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		Notify(syscall.SIGUSR1)
 	}
 }
@@ -71,7 +71,7 @@ func BenchmarkNotifyParallel(b *testing.B) {
 	// Register multiple listeners
 	var counter int
 	var ids []uint32
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		id := On(syscall.SIGUSR1, func() { counter++ })
 		ids = append(ids, id)
 	}

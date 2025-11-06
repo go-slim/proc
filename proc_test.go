@@ -164,8 +164,3 @@ func trivialSleep(d time.Duration) (string, []string) {
 	}
 	return "sh", []string{"-c", "sleep " + strconv.Itoa(sec)}
 }
-
-// Helper for checking Windows platform
-func isWindowsOS() bool {
-	return runtime.GOOS == "windows"
-}

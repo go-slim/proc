@@ -168,6 +168,12 @@ func Cancel(ids ...uint32) {
 	lock.Unlock()
 }
 
+func Wait(sig os.Signal) {
+	wait := make(chan struct{})
+	Once(sig, func() { wait <- struct{}{} })
+	<-wait
+}
+
 // Notify dispatches a signal to all registered listeners for that signal.
 // It executes all matching listeners concurrently in separate goroutines,
 // with panic recovery. Listeners registered with Once are automatically
